@@ -1,17 +1,16 @@
 import requests
 import time
+import json
 
 DEFAULT_HEAD = '''Accept:text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,image/apng,*/*;q=0.8
 Accept-Encoding:gzip, deflate
 Accept-Language:zh-CN,zh;q=0.9
 Cache-Control:max-age=0
 Connection:keep-alive
-Content-Length:149
 Content-Type:application/x-www-form-urlencoded
-Cookie:program=beijing-information; vlan=0; ip=10.3.131.236; md5_login2=2017011398%7C00107591
-Host:192.168.7.71
-Origin:http://192.168.7.71
-Referer:http://192.168.7.71/a70.htm
+Host:10.10.10.9
+Origin:http://10.10.10.9
+Referer:http://10.10.10.9/a70.htm
 Upgrade-Insecure-Requests:1
 User-Agent:Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/62.0.3202.62 Safari/537.36'''
 
@@ -69,6 +68,7 @@ class Client():
         headers = self._trans_head()
         res = self.session.get(url,params=param_data, headers=headers, cookies=self.cookies)
         self.cookies.update(res.cookies)
+        # print(res.text)
         if res.status_code >= 400:
             return ""
         return res.text
@@ -80,6 +80,12 @@ class User():
         self.passwd = passwd
 
         self.client = Client()
+    
+    def _trans_res(self, raw_res):
+        start = raw_res.find('(')+1
+        end = raw_res.rfind(')')
+        res = json.loads(raw_res[start:end])
+        return res
     
     def login(self,):
         para_data = DEFAULT_DATA
@@ -112,17 +118,39 @@ class User():
         res = self.client.get(url,param_data=para_data)
         print(res)
     
-    def get_info(self,):
+    def get_info(self, method='loadOnlineDevice'):
         url = "http://10.10.10.9:801/eportal/"
         t = int(1000 * time.time())
         para_data = {
             'c': 'GetUserMsg',
-            'a': 'loadOnlineDevice',
+            'a': method,
             'callback': 'jQuery111309017605431204194_1582689082082',
             'account': self.user_name,
             '_': int(1000 * time.time())
         }
         res = self.client.get(url, para_data)
-        print(res)
+        res = self._trans_res(res)
+        for item in res['list']:
+            print(item)
+            # print()
+        # return res['list']
+    
+    def logout(self, ):
+        url = "http://10.10.10.9/drcom/logout"
+        para_data = {
+            'callback':'dr1582694731120',
+            '_': int(1000 * time.time())
+        }
+        res = self.client.get(url, param_data=para_data)
+        start = res.find('(') + 1
+        end = res.rfind(')') 
+        print(res[start:end])
+        res = json.loads(res[start:end])
+        if res['result'] == 1:
+            print("登出成功!!")
+            return
+        else:
+            print("登出失败，请重试")
+            return
 
 
